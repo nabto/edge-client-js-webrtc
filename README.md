@@ -15,3 +15,4 @@ Below are a list of features and a list of limitations. The current limitations 
 ## Limitations
 * Open Nabto Streams
 * IAM util ([edge_webrtc_iamutil.ts](src/edge_webrtc_iamutil.ts) exists, but API is not stable, and many features are missing)
+* A official v1.0.0 release
