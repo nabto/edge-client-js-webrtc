@@ -143,14 +143,15 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   }
 
   async validateFingerprint(fingerprint: string): Promise<boolean> {
-    const response = await this.connection.coapInvoke("POST", `/webrtc/challenge`, CoapContentFormat.APPLICATION_JSON, JSON.stringify({ challenge: crypto.randomUUID() }));
+    const nonce = crypto.randomUUID();
+    const response = await this.connection.coapInvoke("POST", `/webrtc/challenge`, CoapContentFormat.APPLICATION_JSON, JSON.stringify({ challenge: nonce }));
     const resp = JSON.parse(response);
     if (resp.statusCode != 205) {
       throw new Error(`Failed validate fingerprint with status: ${resp.statusCode}`);
     } else {
       let respPl = JSON.parse(String.fromCharCode.apply(null, resp.payload));
       console.log("respPl: ", respPl);
-      let valid = await this.validateJwt(respPl.response, fingerprint);
+      let valid = await this.validateJwt(respPl.response, fingerprint, nonce);
       console.log("Fingerprint validity: ", valid);
       return valid;
     }
@@ -294,7 +295,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   }
 
-  private async validateJwt(token: string, fingerprint: string): Promise<boolean>
+  private async validateJwt(token: string, fingerprint: string, nonce: string): Promise<boolean>
   {
     let decoded = jwt.decode(token, {complete: true});
     if (decoded == null) {
@@ -303,6 +304,11 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     console.log("decoded JWT: ", decoded);
     let header: any = decoded.header;
     console.log("importing JWK: ", header.jwk)
+
+    let payload: any = decoded.payload;
+    if (!payload.nonce || payload.nonce != nonce) {
+      return false;
+    }
 
     let signingData = token.substring(0, token.lastIndexOf('.'));
     console.log("SigningData: ", signingData);
