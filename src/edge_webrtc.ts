@@ -119,7 +119,7 @@ export interface EdgeWebrtcConnection {
   /**
    * Validate the fingerprint of the device.
    *
-   * WebRTC connections uses one-time private keys meaning normal Nabto fingerprint validation cannot be used. This function will challenge the device to prove it is in possesion of the private key used for normal Nabto Connections. The fingerprint to validate is the same as the one configured for the device in the Nabto Cloud Console.
+   * WebRTC connections uses one-time private keys meaning normal Nabto fingerprint validation cannot be used. This function will challenge the device to prove it is in possession of the private key used for normal Nabto Connections. The fingerprint to validate is the same as the one configured for the device in the Nabto Cloud Console.
    *
    * @param fingerprint The fingerprint to validate
    * @returns Promise resolved with true if the fingerprint was valid.
