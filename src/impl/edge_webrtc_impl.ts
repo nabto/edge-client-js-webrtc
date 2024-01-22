@@ -44,77 +44,76 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     this.started = true;
     this.signaling = new NabtoWebrtcSignaling();
     this.connection = new NabtoWebrtcConnection();
-
-    if (!this.connectionOpts) {
-      throw new Error("Missing connection options");
-    }
-
-    if (this.connectionOpts.signalingServerUrl){
-      console.log("Setting signaling URL: ", this.connectionOpts.signalingServerUrl)
-      this.signaling.signalingHost = this.connectionOpts.signalingServerUrl;
-    }
-    this.signaling.setDeviceConfigSct(this.connectionOpts.productId, this.connectionOpts.deviceId, this.connectionOpts.sct);
-
-    this.signaling.onconnected = async (msg: any) => {
-      this.signaling.requestTurnCredentials();
-    };
-
-    this.signaling.onanswer = async (msg) => {
-      const answer = JSON.parse(msg.data);
-      this.setMetadata(msg.metadata);
-      const desc = new RTCSessionDescription(answer);
-      await this.pc.setRemoteDescription(desc).catch(reason => {
-        console.error(`setRemoteDesc failed with ${reason}`);
-        this.closeContext(reason);
-      });
-    };
-
-    this.signaling.onoffer = async (msg) => {
-      const offer = JSON.parse(msg.data);
-      this.setMetadata(msg.metadata);
-      const desc = new RTCSessionDescription(offer);
-      await this.pc.setRemoteDescription(desc);
-      await this.pc.setLocalDescription(await this.pc.createAnswer());
-      this.signaling.sendAnswer(this.pc.localDescription);
-    };
-
-    this.signaling.onicecandidate = async (msg) => {
-      try {
-        const candidate = new RTCIceCandidate(JSON.parse(msg.data));
-        await this.pc.addIceCandidate(candidate);
-      } catch (err) {
-        console.error(`Failed to add candidate to peer connection`, err);
-      }
-    };
-
-    this.signaling.onerror = (msg, err) => {
-      console.log("Signaling error: ", msg, err);
-      this.closeContext(err);
-    };
-
-    this.signaling.onturncredentials = async (creds) => {
-      this.setupPeerConnection(creds.servers);
-
-      const coapChannel = this.pc.createDataChannel("coap");
-
-      const offer = await this.pc.createOffer();
-      await this.pc.setLocalDescription(offer);
-
-      this.signaling.sendOffer(this.pc.localDescription, { noTrickle: false });
-
-      coapChannel.addEventListener("open", async (event) => {
-        this.connection.setCoapDataChannel(coapChannel);
-        this.connected = true;
-        if (this.connectedCb) {
-          this.connectedCb();
-        }
-      });
-
-    };
-
-    this.signaling.signalingConnect();
-
     return new Promise<void>((resolve) => {
+
+      if (!this.connectionOpts) {
+        throw new Error("Missing connection options");
+      }
+
+      if (this.connectionOpts.signalingServerUrl){
+        console.log("Setting signaling URL: ", this.connectionOpts.signalingServerUrl)
+        this.signaling.signalingHost = this.connectionOpts.signalingServerUrl;
+      }
+      this.signaling.setDeviceConfigSct(this.connectionOpts.productId, this.connectionOpts.deviceId, this.connectionOpts.sct);
+
+      this.signaling.onconnected = async (msg: any) => {
+        this.signaling.requestTurnCredentials();
+      };
+
+      this.signaling.onanswer = async (msg) => {
+        const answer = JSON.parse(msg.data);
+        this.setMetadata(msg.metadata);
+        const desc = new RTCSessionDescription(answer);
+        await this.pc.setRemoteDescription(desc).catch(reason => {
+          console.error(`setRemoteDesc failed with ${reason}`);
+          this.closeContext(reason);
+        });
+      };
+
+      this.signaling.onoffer = async (msg) => {
+        const offer = JSON.parse(msg.data);
+        this.setMetadata(msg.metadata);
+        const desc = new RTCSessionDescription(offer);
+        await this.pc.setRemoteDescription(desc);
+        await this.pc.setLocalDescription(await this.pc.createAnswer());
+        this.signaling.sendAnswer(this.pc.localDescription);
+      };
+
+      this.signaling.onicecandidate = async (msg) => {
+        try {
+          const candidate = new RTCIceCandidate(JSON.parse(msg.data));
+          await this.pc.addIceCandidate(candidate);
+        } catch (err) {
+          console.error(`Failed to add candidate to peer connection`, err);
+        }
+      };
+
+      this.signaling.onerror = (msg, err) => {
+        console.log("Signaling error: ", msg, err);
+        this.closeContext(err);
+      };
+
+      this.signaling.onturncredentials = async (creds) => {
+        this.setupPeerConnection(creds.servers);
+
+        const coapChannel = this.pc.createDataChannel("coap");
+
+        const offer = await this.pc.createOffer();
+        await this.pc.setLocalDescription(offer);
+
+        // this.signaling.sendOffer(this.pc.localDescription, { noTrickle: false });
+
+        coapChannel.addEventListener("open", async (event) => {
+          this.connection.setCoapDataChannel(coapChannel);
+          this.connected = true;
+          if (this.connectedCb) {
+            this.connectedCb();
+          }
+        });
+
+      };
+
+      this.signaling.signalingConnect();
       resolve();
     });
   }
@@ -162,9 +161,11 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   //openEdgeStream(streamPort: number): Promise<EdgeStream> {}
 
   // TODO: our example does not use this
-  addTrack(track: MediaStreamTrack): void {
-    console.error("addTrack() NOT IMPLEMENTED");
-  }
+  async addTrack(stream: MediaStream, trackId: string): Promise<void> {
+    stream.getTracks().forEach(track => this.pc.addTrack(track, stream));
+    const offer = await this.pc.createOffer();
+    await this.pc.setLocalDescription(offer);
+}
 
   private setMetadata(data?: Metadata) {
     if (data && data.status && data.status == "FAILED") {
@@ -261,6 +262,10 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     this.pc.onsignalingstatechange = (event) => {
       console.log(`WebRTC signaling state changed to: ${this.pc.signalingState}`);
       switch (this.pc.signalingState) {
+        case "have-local-offer": {
+          this.signaling.sendOffer(this.pc.localDescription, { noTrickle: false });
+          break;
+        }
         case "closed": {
           console.log("closing from signalingstatechange");
           this.closeContext();
@@ -271,6 +276,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
     this.pc.onnegotiationneeded = (event) => {
       console.log("Negotiation needed!!");
+
     };
 
     this.pc.ontrack = (ev: RTCTrackEvent) => {

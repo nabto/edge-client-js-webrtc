@@ -131,7 +131,8 @@ export interface EdgeWebrtcConnection {
   //openEdgeStream(streamPort: number): Promise<EdgeStream>;
 
   // TODO: our example currently do not use this feature as tracks are added by the device.
-  // addTrack(track: MediaStreamTrack, trackId: string): void;
+  addTrack(track: MediaStream, trackId: string): Promise<void>;
+
 };
 
 export class EdgeWebrtcConnectionFactory {
