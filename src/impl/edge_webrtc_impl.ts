@@ -133,8 +133,13 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   async coapInvoke(method: CoapMethod, path: string, contentFormat?: number, payload?: Buffer): Promise<CoapResponse> {
     const response = await this.connection.coapInvoke(method, path, contentFormat, payload);
     const resp = JSON.parse(response);
+    let result: CoapResponse = {
+      statusCode: resp.statusCode,
+      contentFormat: resp.contentType,
+      payload: resp.payload
+    }
     // TODO: ensure this follows the CoapResponse format.
-    return resp;
+    return result;
   }
 
   passwordAuthenticate(username: string, password: string): Promise<void> {
