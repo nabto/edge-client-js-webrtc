@@ -39,7 +39,7 @@ export type ConnectionOptions = {
 
 export type CoapResponse = {
   statusCode: number,
-  contentType?: number,
+  contentFormat?: number,
   payload?: Buffer,
 }
 
@@ -97,15 +97,15 @@ export interface EdgeWebrtcConnection {
   /**
    * Invoke a CoAP endpoint in the device using a WebRTC data channel on an established connection.
    *
-   * CoAP payloads are sent as an ArrayBuffer, for convenience it can be provided as a string to be converted by the library.
+   * The CoAP content format is defined as a number. This must follow the CoAP content format specified by IANA. Common content formats are available in the CoapContentFormat enum. CoAP payloads are sent as an ArrayBuffer, for convenience it can be provided as a string to be converted by the library.
    *
    * @param method CoAP method of the endpoint
    * @param path Path of the CoAP endpoint
-   * @param contentType Content type of the payload if one is added
+   * @param contentFormat Content format of the payload if one is added
    * @param payload Payload of the CoAP request if needed
    * @returns Promise resolved when a response is ready
    */
-  coapInvoke(method: CoapMethod, path: string, contentType?: number, payload?: ArrayBuffer | string): Promise<CoapResponse>;
+  coapInvoke(method: CoapMethod, path: string, contentFormat?: number, payload?: ArrayBuffer | string): Promise<CoapResponse>;
 
   /**
    * Attempt password authentication on the device.

@@ -130,8 +130,8 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   }
 
 
-  async coapInvoke(method: CoapMethod, path: string, contentType?: number, payload?: Buffer): Promise<CoapResponse> {
-    const response = await this.connection.coapInvoke(method, path, contentType, payload);
+  async coapInvoke(method: CoapMethod, path: string, contentFormat?: number, payload?: Buffer): Promise<CoapResponse> {
+    const response = await this.connection.coapInvoke(method, path, contentFormat, payload);
     const resp = JSON.parse(response);
     // TODO: ensure this follows the CoapResponse format.
     return resp;
