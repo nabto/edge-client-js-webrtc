@@ -1,6 +1,6 @@
 {
     "name": "edge-webrtc-client",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "main": "dist/edge_webrtc.js",
     "module": "esm/edge_webrtc.js",
     "types": "dist/edge_webrtc.d.ts",
