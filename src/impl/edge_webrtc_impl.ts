@@ -166,10 +166,38 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   //openEdgeStream(streamPort: number): Promise<EdgeStream> {}
 
   // TODO: our example does not use this
-  async addTrack(stream: MediaStream, trackId: string): Promise<void> {
-    stream.getTracks().forEach(track => this.pc.addTrack(track, stream));
-    const offer = await this.pc.createOffer();
-    await this.pc.setLocalDescription(offer);
+  async addTrack(track: MediaStreamTrack, trackId: string): Promise<void> {
+    console.log("My metadata: ", this.metadata);
+    let mid: string | undefined;
+    if (this.metadata && this.metadata.tracks) {
+      for (let t of this.metadata.tracks) {
+        if (t.trackId == trackId) {
+          mid = t.mid;
+        }
+      }
+    }
+    if (!mid) {
+      console.error("did not find track ID in metadata creating new track currently not supported!!");
+      throw new Error("New track is currently unsupported")
+      return;
+    }
+
+    let trans = this.pc.getTransceivers();
+    for (let t of trans) {
+      if (t.mid == mid) {
+        console.log("Found mid match! direction: ", t.currentDirection);
+        t.direction = "sendrecv";
+        t.sender.replaceTrack(track);
+        const offer = await this.pc.createOffer();
+        await this.pc.setLocalDescription(offer);
+        return;
+      }
+    }
+
+    console.error("NO MATCH FOUND")
+    // stream.getTracks().forEach(track => this.pc.addTrack(track, stream));
+    // const offer = await this.pc.createOffer();
+    // await this.pc.setLocalDescription(offer);
 }
 
   private setMetadata(data?: Metadata) {
@@ -268,7 +296,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       console.log(`WebRTC signaling state changed to: ${this.pc.signalingState}`);
       switch (this.pc.signalingState) {
         case "have-local-offer": {
-          this.signaling.sendOffer(this.pc.localDescription, { noTrickle: false });
+          this.signaling.sendOffer(this.pc.localDescription, this.metadata);
           break;
         }
         case "closed": {
