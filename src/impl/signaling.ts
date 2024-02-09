@@ -133,11 +133,21 @@ export default class NabtoWebrtcSignaling {
   private wsMessage(ws: WebSocket, event: MessageEvent) {
     console.log(`Message received: ${event.data}`);
 
-    const json = JSON.parse(event.data);
 
-    const msg: SignalingMessage = signalingMessageType.parse(json);
+    try {
+      const json = JSON.parse(event.data);
+      try {
+        const msg: SignalingMessage = signalingMessageType.parse(json);
+        this.handleSignalingMessage(msg);
+      } catch (e2) {
+        console.log("Cannot parse signaling json message to the type of a SignalingMessage", e2)
+      }
+    } catch (e1) {
+      console.log("Cannot parse signaling message as json ", e1);
+    }
+  }
 
-
+  private handleSignalingMessage(msg: SignalingMessage) {
     switch (msg.type) {
       case SignalingMessageTypes.LOGIN_RESPONSE: {
         // WEBSOCK_LOGIN_RESPONSE
