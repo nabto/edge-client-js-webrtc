@@ -19,7 +19,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   started = false;
   connected = false;
 
-  private metadata: WebRTCMetadata = {tracks: new Array()};
+  private metadata: WebRTCMetadata = {tracks: []};
 
   closeResolver?: (value: void | PromiseLike<void>) => void;
 
@@ -134,7 +134,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   async coapInvoke(method: CoapMethod, path: string, contentFormat?: number, payload?: Buffer): Promise<CoapResponse> {
     const response = await this.connection.coapInvoke(method, path, contentFormat, payload);
     const resp = JSON.parse(response);
-    let result: CoapResponse = {
+    const result: CoapResponse = {
       statusCode: resp.statusCode,
       contentFormat: resp.contentType,
       payload: resp.payload
@@ -154,9 +154,9 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     if (resp.statusCode != 205) {
       throw new Error(`Failed validate fingerprint with status: ${resp.statusCode}`);
     } else {
-      let respPl = JSON.parse(String.fromCharCode.apply(null, resp.payload));
+      const respPl = JSON.parse(String.fromCharCode.apply(null, resp.payload));
       console.log("respPl: ", respPl);
-      let valid = await this.validateJwt(respPl.response, fingerprint, nonce);
+      const valid = await this.validateJwt(respPl.response, fingerprint, nonce);
       console.log("Fingerprint validity: ", valid);
       return valid;
     }
@@ -171,7 +171,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     console.log("My metadata: ", this.metadata);
     let mid: string | undefined;
     if (this.metadata && this.metadata.tracks) {
-      for (let t of this.metadata.tracks) {
+      for (const t of this.metadata.tracks) {
         if (t.trackId == trackId) {
           mid = t.mid;
         }
@@ -183,8 +183,8 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       return;
     }
 
-    let trans = this.pc.getTransceivers();
-    for (let t of trans) {
+    const trans = this.pc.getTransceivers();
+    for (const t of trans) {
       if (t.mid == mid) {
         console.log("Found mid match! direction: ", t.currentDirection);
         t.direction = "sendrecv";
@@ -204,7 +204,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   private setMetadata(data: WebRTCMetadata) {
     if (data && data.status && data.status == "FAILED") {
       if (data.tracks) {
-        for (let t of data.tracks) {
+        for (const t of data.tracks) {
           if (t.error) {
             console.error(`Device reported Track ${t.mid}:${t.trackId} failed with error: ${t.error}`);
           }
@@ -254,8 +254,8 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   private setupPeerConnection(turnServers: TurnServer[]) {
 
-    let iceServers: RTCIceServer[] = [{ urls: "stun:stun.nabto.net" }]
-    for ( let s of turnServers) {
+    const iceServers: RTCIceServer[] = [{ urls: "stun:stun.nabto.net" }]
+    for ( const s of turnServers) {
       iceServers.push({
         urls: `${s.hostname}`,
         username: s.username,
@@ -314,10 +314,10 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     };
 
     this.pc.ontrack = (ev: RTCTrackEvent) => {
-      let mid = ev.transceiver.mid;
+      const mid = ev.transceiver.mid;
       if (this.onTrackCb) {
         if (this.metadata && this.metadata.tracks) {
-          for (let t of this.metadata.tracks) {
+          for (const t of this.metadata.tracks) {
             if (t.mid == mid) {
               return this.onTrackCb(ev, t.trackId, t.error);
             }
@@ -337,23 +337,23 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   private async validateJwt(token: string, fingerprint: string, nonce: string): Promise<boolean>
   {
-    let decoded = jwt.decode(token, {complete: true});
+    const decoded = jwt.decode(token, {complete: true});
     if (decoded == null) {
       return false;
     }
     console.log("decoded JWT: ", decoded);
-    let header: any = decoded.header;
+    const header: any = decoded.header;
     console.log("importing JWK: ", header.jwk)
 
-    let payload: any = decoded.payload;
+    const payload: any = decoded.payload;
     if (!payload.nonce || payload.nonce != nonce) {
       return false;
     }
 
-    let signingData = token.substring(0, token.lastIndexOf('.'));
+    const signingData = token.substring(0, token.lastIndexOf('.'));
     console.log("SigningData: ", signingData);
 
-    let pubKey = await crypto.subtle.importKey(
+    const pubKey = await crypto.subtle.importKey(
       "jwk",
       header.jwk,
       {
@@ -366,7 +366,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     console.log("Signature: ", decoded.signature);
     console.log("Decoded signature: ", Buffer.from(decoded.signature, 'base64'));
 
-    let valid = await crypto.subtle.verify(
+    const valid = await crypto.subtle.verify(
       {
         name: "ECDSA",
         hash: { name: "SHA-256"}
@@ -380,9 +380,9 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       return false;
     }
 
-    let pubKeyData = await crypto.subtle.exportKey("spki",pubKey);
-    let fpBuf = await crypto.subtle.digest("SHA-256", pubKeyData);
-    let fpArr = Array.from(new Uint8Array(fpBuf));
+    const pubKeyData = await crypto.subtle.exportKey("spki",pubKey);
+    const fpBuf = await crypto.subtle.digest("SHA-256", pubKeyData);
+    const fpArr = Array.from(new Uint8Array(fpBuf));
     const fp = fpArr
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");

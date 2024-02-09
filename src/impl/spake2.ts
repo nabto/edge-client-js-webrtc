@@ -65,7 +65,7 @@ export class Spake2Client {
   }
 
   calculateK(S: Buffer) {
-    let Shex = this.toHexString(S);
+    const Shex = this.toHexString(S);
     this.calculateKHex(Shex);
   }
 
@@ -124,7 +124,7 @@ export class Spake2Client {
   }
 
   fromHexString(str: string): number[] {
-    var result: number[] = [];
+    const result: number[] = [];
     // Ignore any trailing single digit; I don't know what your needs
     // are for this case, so you may want to throw an error or convert
     // the lone digit depending on your needs.
@@ -142,4 +142,4 @@ export class Spake2Client {
     this.x = new BN(x, 'hex');
   }
 
-};
+}

@@ -10,7 +10,7 @@ export const enum SignalingMessageTypes {
 
     LOGIN_REQUEST = 20,
     LOGIN_RESPONSE = 21
-  };
+  }
 
 export const loginRequestType = z.object({ type: z.literal(SignalingMessageTypes.LOGIN_REQUEST), productId: z.string(), deviceId: z.string(), sct: z.optional(z.string()), jwt: z.optional(z.string()), serverKey: z.optional(z.string()) });
 export const loginResponseType = z.object({ type: z.literal(SignalingMessageTypes.LOGIN_RESPONSE) });

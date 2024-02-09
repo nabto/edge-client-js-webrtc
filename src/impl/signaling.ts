@@ -5,14 +5,14 @@ interface SctDeviceConfig {
   productId: string,
   deviceId: string,
   sct: string
-};
+}
 
 interface JwtDeviceConfig {
   type: "JWT",
   productId: string,
   deviceId: string,
   jwt: string
-};
+}
 
 type DeviceConfig = SctDeviceConfig | JwtDeviceConfig;
 

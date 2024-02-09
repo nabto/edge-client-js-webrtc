@@ -28,7 +28,7 @@ export enum CoapContentFormat {
   APPLICATION_OCTET_STREAM = 42,
   APPLICATION_JSON = 50,
   APPLICATION_CBOR = 60
-};
+}
 
 export type ConnectionOptions = {
   productId: string,
@@ -134,7 +134,7 @@ export interface EdgeWebrtcConnection {
   // Warning: addTrack will currently fail if a track with same trackId does not already exist (ie. you are adding downstream media to an track the device created)
   addTrack(track: MediaStreamTrack, trackId: string): Promise<void>;
 
-};
+}
 
 export class EdgeWebrtcConnectionFactory {
   /**
