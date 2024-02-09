@@ -1,6 +1,6 @@
 import { CoapContentFormat, EdgeWebrtcConnection } from "../edge_webrtc";
 import { EdgeWebrtcIamUtil, IamUser } from "../edge_webrtc_iamutil";
-var cbor = require('cbor');
+const cbor = require('cbor');
 
 
 export class EdgeWebrtcIamUtilImpl implements EdgeWebrtcIamUtil {
@@ -12,7 +12,7 @@ export class EdgeWebrtcIamUtilImpl implements EdgeWebrtcIamUtil {
     }
 
     // TODO: determine a better way to create passwords
-    let pwd = crypto.randomUUID().substring(0,16);
+    const pwd = crypto.randomUUID().substring(0,16);
     const pwdResp = await connection.coapInvoke("PUT", `/iam/users/${username}/password`, CoapContentFormat.APPLICATION_CBOR, cbor.encode(pwd));
     if (pwdResp.statusCode != 204) {
       throw new Error(`Failed to set password for user with status: ${pwdResp.statusCode}`);
@@ -33,7 +33,7 @@ export class EdgeWebrtcIamUtilImpl implements EdgeWebrtcIamUtil {
     if (!userResp.payload) {
       throw new Error(`Failed to get IAM user. Response had no payload`);
     }
-    let payloadObj = cbor.decodeAllSync(Buffer.from(userResp.payload))[0];
+    const payloadObj = cbor.decodeAllSync(Buffer.from(userResp.payload))[0];
 
     payloadObj.Password = pwd;
     return payloadObj;
@@ -49,7 +49,7 @@ export class EdgeWebrtcIamUtilImpl implements EdgeWebrtcIamUtil {
     if (!resp.payload) {
       throw new Error(`Failed to list IAM roles. Response had no payload`);
     }
-    let payloadObj = cbor.decodeAllSync(Buffer.from(resp.payload))[0];
+    const payloadObj = cbor.decodeAllSync(Buffer.from(resp.payload))[0];
     return payloadObj;
 
   }
@@ -62,10 +62,10 @@ export class EdgeWebrtcIamUtilImpl implements EdgeWebrtcIamUtil {
     } else if (!me.payload) {
       throw new Error(`Failed to get IAM user. Response had no payload`);
     } else {
-      let payloadObj = cbor.decodeAllSync(Buffer.from(me.payload))[0];
+      const payloadObj = cbor.decodeAllSync(Buffer.from(me.payload))[0];
       return payloadObj;
     }
 
 
   }
-};
+}
