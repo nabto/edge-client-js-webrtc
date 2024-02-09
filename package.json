@@ -6,10 +6,11 @@
     "types": "dist/edge_webrtc.d.ts",
     "scripts": {
         "build:cjs": "tsc --module commonjs --outDir dist",
-        "build:esm": "tsc --module es2022 --outDir esm",
+        "build:esm": "tsc -p ./tsconfig_esm.json --outDir esm",
         "build": "npm run build:esm && npm run build:cjs",
         "install": "npm run build",
-        "start": "npm run"
+        "start": "npm run",
+        "test": "jest"
     },
     "dependencies": {
         "@types/bn.js": "^5.1.5",
@@ -24,9 +25,12 @@
         "eslint": "8.44.0",
         "jsonwebtoken": "^9.0.2",
         "spake2": "^1.0.2",
-        "uuid": "^9.0.1"
+        "uuid": "^9.0.1",
+        "zod": "^3.22.4"
     },
     "devDependencies": {
+        "jest": "^29.7.0",
+        "ts-jest": "^29.1.2",
         "typescript": "^5.3.2"
     }
 }

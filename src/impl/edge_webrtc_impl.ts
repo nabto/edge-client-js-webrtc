@@ -1,6 +1,7 @@
 import { ClosedCallback, CoapContentFormat, CoapMethod, CoapResponse, ConnectedCallback, ConnectionOptions, EdgeWebrtcConnection, OnTrackCallback } from "../edge_webrtc";
 import { NabtoWebrtcConnection } from "./peer_connection";
-import NabtoWebrtcSignaling, { Metadata, TurnServer } from "./signaling";
+import NabtoWebrtcSignaling from "./signaling";
+import { WebRTCMetadata, TurnServer } from "./signaling_types";
 import * as jwt from 'jsonwebtoken';
 
 export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
@@ -18,7 +19,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   started = false;
   connected = false;
 
-  private metadata?: Metadata;
+  private metadata: WebRTCMetadata = {tracks: new Array()};
 
   closeResolver?: (value: void | PromiseLike<void>) => void;
 
@@ -76,7 +77,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         const desc = new RTCSessionDescription(offer);
         await this.pc.setRemoteDescription(desc);
         await this.pc.setLocalDescription(await this.pc.createAnswer());
-        this.signaling.sendAnswer(this.pc.localDescription);
+        this.signaling.sendAnswer(this.pc.localDescription, this.metadata);
       };
 
       this.signaling.onicecandidate = async (msg) => {
@@ -200,7 +201,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     // await this.pc.setLocalDescription(offer);
 }
 
-  private setMetadata(data?: Metadata) {
+  private setMetadata(data: WebRTCMetadata) {
     if (data && data.status && data.status == "FAILED") {
       if (data.tracks) {
         for (let t of data.tracks) {
