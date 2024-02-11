@@ -209,8 +209,6 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
           console.error(`Device reported Track ${t.mid}:${t.trackId} failed with error: ${t.error}`);
         }
       }
-    } else {
-      console.error("Device reported track errors but no tracks was in the metadata: ", data);
     }
     this.metadata = data;
   }
