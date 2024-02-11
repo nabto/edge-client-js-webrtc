@@ -35,7 +35,7 @@ export default class NabtoWebrtcSignaling {
   onanswer?: (answer: WebRTCAnswer) => void;
   onicecandidate?: (candidate: WebRTCIceCandidate) => void;
   onturncredentials?: (creds: TurnResponse) => void;
-  onerror?: (errorString: string, errorObject: any) => void;
+  onerror?: (errorString: string, errorObject: Event | Error) => void;
 
   setDeviceConfigSct(productId: string, deviceId: string, sct: string) {
     this.config = {
@@ -75,7 +75,7 @@ export default class NabtoWebrtcSignaling {
       this._ws = undefined;
     });
 
-    ws.addEventListener("open", e => {
+    ws.addEventListener("open", () => {
       if (!this.config) {
         console.log("missing configuration");
         return;
@@ -98,7 +98,7 @@ export default class NabtoWebrtcSignaling {
     this._ws = undefined;
   }
 
-  sendOffer(offer: any, metadata: any) {
+  sendOffer(offer: RTCSessionDescription, metadata: WebRTCMetadata) {
     console.log(`sendOffer metadata: ${JSON.stringify(metadata)}`);
     console.log(offer);
     this.sendToServer({
@@ -108,7 +108,7 @@ export default class NabtoWebrtcSignaling {
     })
   }
 
-  sendAnswer(answer: any, metadata: WebRTCMetadata) {
+  sendAnswer(answer: RTCSessionDescription, metadata: WebRTCMetadata) {
     const message: WebRTCAnswer = {
       type: SignalingMessageTypes.WEBRTC_ANSWER,
       data: JSON.stringify(answer),
@@ -117,7 +117,7 @@ export default class NabtoWebrtcSignaling {
     this.sendToServer(message);
   }
 
-  sendIceCandidate(candidate: any) {
+  sendIceCandidate(candidate: RTCIceCandidate) {
     this.sendToServer({
       type: SignalingMessageTypes.WEBRTC_ICE_CANDIDATE,
       data: JSON.stringify(candidate)
@@ -180,13 +180,13 @@ export default class NabtoWebrtcSignaling {
 
       default: {
         console.error(`Received unknown message: ${msg}`);
-        this.onerror?.("Unknown Nabto Signaling message", msg);
+        this.onerror?.("Unknown Nabto Signaling message", new Error("Unknown signaling message of type ${msg.type}"));
         break;
       }
     }
   }
 
-  private sendToServer(msg: any) {
+  private sendToServer(msg: SignalingMessage) {
     const json = JSON.stringify(msg);
     console.log(`sendToServer ${json}`);
     this.ws.send(json);

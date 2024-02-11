@@ -19,7 +19,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   started = false;
   connected = false;
 
-  private metadata: WebRTCMetadata = {tracks: []};
+  private metadata: WebRTCMetadata = { tracks: [] };
 
   closeResolver?: (value: void | PromiseLike<void>) => void;
 
@@ -47,17 +47,17 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     this.connection = new NabtoWebrtcConnection();
     return new Promise<void>((resolve) => {
 
-      if (!this.connectionOpts) {
+      if (this.connectionOpts == null) {
         throw new Error("Missing connection options");
       }
 
-      if (this.connectionOpts.signalingServerUrl){
+      if (this.connectionOpts.signalingServerUrl != null) {
         console.log("Setting signaling URL: ", this.connectionOpts.signalingServerUrl)
         this.signaling.signalingHost = this.connectionOpts.signalingServerUrl;
       }
       this.signaling.setDeviceConfigSct(this.connectionOpts.productId, this.connectionOpts.deviceId, this.connectionOpts.sct);
 
-      this.signaling.onconnected = async (msg: any) => {
+      this.signaling.onconnected = async () => {
         this.signaling.requestTurnCredentials();
       };
 
@@ -77,7 +77,10 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         const desc = new RTCSessionDescription(offer);
         await this.pc.setRemoteDescription(desc);
         await this.pc.setLocalDescription(await this.pc.createAnswer());
-        this.signaling.sendAnswer(this.pc.localDescription, this.metadata);
+        const localDescription = this.pc.localDescription;
+        if (localDescription != null) {
+          this.signaling.sendAnswer(localDescription, this.metadata);
+        }
       };
 
       this.signaling.onicecandidate = async (msg) => {
@@ -104,7 +107,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
         // this.signaling.sendOffer(this.pc.localDescription, { noTrickle: false });
 
-        coapChannel.addEventListener("open", async (event) => {
+        coapChannel.addEventListener("open", async () => {
           this.connection.setCoapDataChannel(coapChannel);
           this.connected = true;
           if (this.connectedCb) {
@@ -170,14 +173,12 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   async addTrack(track: MediaStreamTrack, trackId: string): Promise<void> {
     console.log("My metadata: ", this.metadata);
     let mid: string | undefined;
-    if (this.metadata && this.metadata.tracks) {
-      for (const t of this.metadata.tracks) {
-        if (t.trackId == trackId) {
-          mid = t.mid;
-        }
+    for (const t of this.metadata.tracks) {
+      if (t.trackId == trackId) {
+        mid = t.mid;
       }
     }
-    if (!mid) {
+    if (mid == null) {
       console.error("did not find track ID in metadata creating new track currently not supported!!");
       throw new Error("New track is currently unsupported")
       return;
@@ -199,24 +200,22 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     // stream.getTracks().forEach(track => this.pc.addTrack(track, stream));
     // const offer = await this.pc.createOffer();
     // await this.pc.setLocalDescription(offer);
-}
+  }
 
   private setMetadata(data: WebRTCMetadata) {
-    if (data && data.status && data.status == "FAILED") {
-      if (data.tracks) {
-        for (const t of data.tracks) {
-          if (t.error) {
-            console.error(`Device reported Track ${t.mid}:${t.trackId} failed with error: ${t.error}`);
-          }
+    if (data.status != null && data.status == "FAILED") {
+      for (const t of data.tracks) {
+        if (t.error != null) {
+          console.error(`Device reported Track ${t.mid}:${t.trackId} failed with error: ${t.error}`);
         }
-      } else {
-        console.error("Device reported track errors but no tracks was in the metadata: ", data);
       }
+    } else {
+      console.error("Device reported track errors but no tracks was in the metadata: ", data);
     }
     this.metadata = data;
   }
 
-  private closeContext(error?: any) {
+  private closeContext(error?: Error | Event) {
     if (this.started) {
       this.started = false;
       this.connected = false;
@@ -237,17 +236,17 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
             // ignore
           }
 
-      });
-    } catch (err) {
-      // ignore
-    }
+        });
+      } catch (err) {
+        // ignore
+      }
 
       this.pc.close();
       this.signaling.close();
       if (this.closedCb) {
         this.closedCb(error);
       }
-    }else {
+    } else {
       console.log("CloseContext when already closed")
     }
   }
@@ -255,7 +254,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   private setupPeerConnection(turnServers: TurnServer[]) {
 
     const iceServers: RTCIceServer[] = [{ urls: "stun:stun.nabto.net" }]
-    for ( const s of turnServers) {
+    for (const s of turnServers) {
       iceServers.push({
         urls: `${s.hostname}`,
         username: s.username,
@@ -277,27 +276,34 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       }
     };
 
-    this.pc.oniceconnectionstatechange = (event) => {
+    this.pc.oniceconnectionstatechange = () => {
       switch (this.pc.iceConnectionState) {
         case "closed":
         case "failed":
         case "disconnected": {
           console.log("closing from iceconnectionstatechange");
-          this.closeContext("Connection closed by device");
+          this.closeContext(new Error("Connection closed by device"));
+          break;
+        }
+        default: {
+          // do not handle the other states
           break;
         }
       }
     };
 
-    this.pc.onicegatheringstatechange = (event) => {
+    this.pc.onicegatheringstatechange = () => {
       console.log(`ICE gathering state changed to: ${this.pc.iceGatheringState}`);
     };
 
-    this.pc.onsignalingstatechange = (event) => {
+    this.pc.onsignalingstatechange = () => {
       console.log(`WebRTC signaling state changed to: ${this.pc.signalingState}`);
       switch (this.pc.signalingState) {
         case "have-local-offer": {
-          this.signaling.sendOffer(this.pc.localDescription, this.metadata);
+          const localDescription = this.pc.localDescription;
+          if (localDescription != null) {
+            this.signaling.sendOffer(localDescription, this.metadata);
+          }
           break;
         }
         case "closed": {
@@ -305,10 +311,13 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
           this.closeContext();
           break;
         }
+        default: {
+          // Do not handle the other states
+        }
       }
     };
 
-    this.pc.onnegotiationneeded = (event) => {
+    this.pc.onnegotiationneeded = () => {
       console.log("Negotiation needed!!");
 
     };
@@ -316,18 +325,14 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     this.pc.ontrack = (ev: RTCTrackEvent) => {
       const mid = ev.transceiver.mid;
       if (this.onTrackCb) {
-        if (this.metadata && this.metadata.tracks) {
-          for (const t of this.metadata.tracks) {
-            if (t.mid == mid) {
-              return this.onTrackCb(ev, t.trackId, t.error);
-            }
+        for (const t of this.metadata.tracks) {
+          if (t.mid == mid) {
+            return this.onTrackCb(ev, t.trackId, t.error);
           }
-          console.error(`Got track event but mid: ${mid} was not found in metadata`);
-          return this.onTrackCb(ev, undefined);
-        } else {
-          console.error("Got track event but no metadata was received");
-          return this.onTrackCb(ev, undefined);
         }
+        console.error(`Got track event but mid: ${mid} was not found in metadata`);
+        return this.onTrackCb(ev, undefined);
+
       } else {
         console.error("Got track event but no callback was set");
       }
@@ -335,18 +340,25 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   }
 
-  private async validateJwt(token: string, fingerprint: string, nonce: string): Promise<boolean>
-  {
-    const decoded = jwt.decode(token, {complete: true});
+  private async validateJwt(token: string, fingerprint: string, nonce: string): Promise<boolean> {
+    const decoded = jwt.decode(token, { complete: true });
     if (decoded == null) {
       return false;
     }
     console.log("decoded JWT: ", decoded);
-    const header: any = decoded.header;
+
+    type JwtHeaderWithJwk = jwt.JwtHeader & { jwk?: JsonWebKey }
+
+    const header: JwtHeaderWithJwk = decoded.header;
+
+    if (header.jwk == null) {
+      return false;
+    }
+
     console.log("importing JWK: ", header.jwk)
 
-    const payload: any = decoded.payload;
-    if (!payload.nonce || payload.nonce != nonce) {
+    const payload: jwt.JwtPayload | string = decoded.payload;
+    if (typeof(payload) == "string" || payload.nonce == null || payload.nonce != nonce) {
       return false;
     }
 
@@ -369,7 +381,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     const valid = await crypto.subtle.verify(
       {
         name: "ECDSA",
-        hash: { name: "SHA-256"}
+        hash: { name: "SHA-256" }
       },
       pubKey,
       Buffer.from(decoded.signature, 'base64'),
@@ -380,12 +392,12 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       return false;
     }
 
-    const pubKeyData = await crypto.subtle.exportKey("spki",pubKey);
+    const pubKeyData = await crypto.subtle.exportKey("spki", pubKey);
     const fpBuf = await crypto.subtle.digest("SHA-256", pubKeyData);
     const fpArr = Array.from(new Uint8Array(fpBuf));
     const fp = fpArr
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
     console.log("FP: ", fp);
 
     return fp == fingerprint;

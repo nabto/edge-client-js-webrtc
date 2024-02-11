@@ -7,8 +7,9 @@ export type ConnectedCallback = () => void;
 
 /**
  * Callback function when a connection is closed
+ * @param error this is optional is is either a event from the websocket connection or an error object describing an error.
  */
-export type ClosedCallback = (error?: any) => void;
+export type ClosedCallback = (error?: Error | Event) => void;
 
 /**
  * Callback function when a new track is added by the device

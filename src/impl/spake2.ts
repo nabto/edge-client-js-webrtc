@@ -1,6 +1,6 @@
 
 import BN from 'bn.js';
-import { ec } from 'elliptic'
+import { ec, curve } from 'elliptic'
 import * as crypto from 'crypto';
 
 export class Spake2Client {
@@ -10,19 +10,19 @@ export class Spake2Client {
 
   forceX = false;
 
-  curve: any;
+  curve: curve.base;
   username: string;
   password: string;
-  G: BN;
+  G: curve.base.BasePoint;
   n: BN;
-  M: BN;
-  N: BN;
+  M: curve.base.BasePoint;
+  N: curve.base.BasePoint;
   w?: Buffer;
   x?: BN;
-  X?: BN;
-  T: any;
-  S: any;
-  K: any;
+  X?: curve.base.BasePoint;
+  T?: curve.base.BasePoint;
+  S?: curve.base.BasePoint;
+  K?: curve.base.BasePoint;
   TT?: Buffer;
   key?: Buffer;
   Ke?: Buffer;
@@ -50,14 +50,14 @@ export class Spake2Client {
     this.X = this.G.mul(this.x);
 
     this.T = this.M.mul(new BN(this.w)).add(this.X);
-    const message = Buffer.from(this.T.encode(true));
+    const message = Buffer.from(this.T.encode('hex', true));
 
     return message;
   }
 
   calculateKHex(S: string) {
     this.S = this.curve.decodePoint(S, "hex");
-    if (!this.w) {
+    if (!this.w || this.x == null) {
       throw new Error("invalid state");
     }
     this.K = this.S.add(this.N.neg().mul(new BN(this.w))).mul(this.x)
@@ -70,10 +70,10 @@ export class Spake2Client {
   }
 
   calculateKey(clientFp: string, deviceFp: string) {
-    if (!this.w) {
+    if (this.w == null || this.S == null || this.T == null || this.K == null) {
       throw new Error("invalid state");
     }
-    this.TT = this.concat(Buffer.from(this.fromHexString(clientFp)), Buffer.from(this.fromHexString(deviceFp)), Buffer.from(this.T.encode(false)), Buffer.from(this.S.encode(false)), Buffer.from(this.K.encode(false)), Buffer.from(this.w));
+    this.TT = this.concat(Buffer.from(this.fromHexString(clientFp)), Buffer.from(this.fromHexString(deviceFp)), Buffer.from(this.T.encode('array', false)), Buffer.from(this.S.encode('array', false)), Buffer.from(this.K.encode('array', false)), Buffer.from(this.w));
     this.key = crypto.createHash('sha256').update(this.TT).digest();
     this.Ke = crypto.createHash('sha256').update(this.key).digest();
     this.Ka = crypto.createHash('sha256').update(this.Ke).digest();
