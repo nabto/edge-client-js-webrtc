@@ -18,8 +18,6 @@ export interface EdgeWebrtcIamUtil {
 
 }
 
-export class EdgeWebrtcIamUtilFactory {
-  static create(): EdgeWebrtcIamUtil {
-    return new EdgeWebrtcIamUtilImpl();
-  }
+export function createEdgeWebrtcIamUtil() {
+  return new EdgeWebrtcIamUtilImpl();
 }

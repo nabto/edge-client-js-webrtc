@@ -7,8 +7,9 @@ export type ConnectedCallback = () => void;
 
 /**
  * Callback function when a connection is closed
+ * @param error this is optional is is either a event from the websocket connection or an error object describing an error.
  */
-export type ClosedCallback = (error?: any) => void;
+export type ClosedCallback = (error?: Error | Event) => void;
 
 /**
  * Callback function when a new track is added by the device
@@ -136,15 +137,13 @@ export interface EdgeWebrtcConnection {
 
 }
 
-export class EdgeWebrtcConnectionFactory {
-  /**
-   * Create a new WebRTC connection using Nabto Edge
-   *
-   * @returns The created EdgeWebrtcConnection
-   */
-  static create(): EdgeWebrtcConnection {
-    return new WebrtcConnectionImpl();
-  }
+/**
+ * Create a new WebRTC connection using Nabto Edge
+ *
+ * @returns The created EdgeWebrtcConnection
+ */
+export function createEdgeWebrtcConnection() {
+  return new WebrtcConnectionImpl();
 }
 
-export { IamUser, EdgeWebrtcIamUtil, EdgeWebrtcIamUtilFactory } from './edge_webrtc_iamutil';
+export { IamUser, EdgeWebrtcIamUtil, createEdgeWebrtcIamUtil } from './edge_webrtc_iamutil';

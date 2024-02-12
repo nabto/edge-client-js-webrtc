@@ -2,7 +2,7 @@
 import { CoapContentFormat, CoapMethod } from '../edge_webrtc';
 import { Spake2Client } from './spake2';
 // import * as cbor from 'cbor'
-var cbor = require('cbor');
+import cbor from  'cbor';
 import { v4 as uuidv4 } from 'uuid';
 
 type CoapCallback = (data: string) => void;
@@ -14,22 +14,17 @@ export class NabtoWebrtcConnection {
 
   coapRequests = new Map<string, CoapCallback>();
 
-  constructor() {
-
-  }
-
   setPeerConnection(conn: RTCPeerConnection) {
     this.myPeerConnection = conn;
   }
 
   setCoapDataChannel(channel: RTCDataChannel) {
     this.coapDataChannel = channel;
-    let self = this;
     channel.addEventListener("message", (event) => {
       console.log("Got datachannel message: ", event.data);
-      let data = JSON.parse(event.data);
-      let cb = self.coapRequests.get(data.requestId);
-      self.coapRequests.delete(data.requestId);
+      const data = JSON.parse(event.data);
+      const cb = this.coapRequests.get(data.requestId);
+      this.coapRequests.delete(data.requestId);
       if (cb) {
         cb(event.data);
       }
@@ -42,14 +37,14 @@ export class NabtoWebrtcConnection {
     }
 
     // crypto.randomUUID() is not available on remote http
-    let requestId = uuidv4();//crypto.randomUUID();
+    const requestId = uuidv4();//crypto.randomUUID();
 
     let pl = payload;
-    if (payload && (typeof payload === "string")) {
+    if (payload != null && (typeof payload === "string")) {
       pl = Buffer.from(payload, "utf-8");
     }
 
-    let req = {
+    const req = {
       type: 0,
       requestId: requestId,
       method: method,
@@ -70,42 +65,36 @@ export class NabtoWebrtcConnection {
       });
   }
 
-  decodeCborPayload(payload: Buffer): any
-  {
-    let val = cbor.decodeAllSync(Buffer.from(payload));
-    return val[0];
-  }
-
   async passwordAuthenticate(username: string, password: string): Promise<void> {
     if (!this.coapDataChannel) {
       throw new Error("CoAP data channel not configured");
     }
 
-    let s = new Spake2Client(username, password);
+    const s = new Spake2Client(username, password);
 
-    let T = s.calculateT();
-    let obj = {
+    const T = s.calculateT();
+    const obj = {
       T: T,
       Username: username
     }
-    let payload = cbor.encode(obj);
+    const payload = cbor.encode(obj);
 
-    let resp = await this.coapInvoke("POST", "/p2p/pwd-auth/1", CoapContentFormat.APPLICATION_CBOR, payload);
+    const resp = await this.coapInvoke("POST", "/p2p/pwd-auth/1", CoapContentFormat.APPLICATION_CBOR, payload);
 
     console.log("Password round 1 response: ", resp);
-    let response = JSON.parse(resp);
+    const response = JSON.parse(resp);
 
-    if (!this.myPeerConnection || this.myPeerConnection.localDescription == null || this.myPeerConnection.remoteDescription == null) {
+    if (!this.myPeerConnection || !this.myPeerConnection.localDescription || !this.myPeerConnection.remoteDescription) {
       throw new Error("Bad peerConnection");
     }
-    let clifp = this.fpFromSdp(this.myPeerConnection.localDescription.sdp);
-    let devFp = this.fpFromSdp(this.myPeerConnection.remoteDescription.sdp);
+    const clifp = this.fpFromSdp(this.myPeerConnection.localDescription.sdp);
+    const devFp = this.fpFromSdp(this.myPeerConnection.remoteDescription.sdp);
 
     s.calculateK(response.payload);
-    let KcA = s.calculateKey(clifp, devFp);
-    let resp2 = await this.coapInvoke("POST", "/p2p/pwd-auth/2", CoapContentFormat.APPLICATION_OCTET_STREAM, KcA);
+    const KcA = s.calculateKey(clifp, devFp);
+    const resp2 = await this.coapInvoke("POST", "/p2p/pwd-auth/2", CoapContentFormat.APPLICATION_OCTET_STREAM, KcA);
     console.log("Password round 2 resp: ", resp2);
-    let response2 = JSON.parse(resp2);
+    const response2 = JSON.parse(resp2);
     if (s.validateKey(response2.payload)) {
       return;
     } else {
@@ -125,7 +114,7 @@ export class NabtoWebrtcConnection {
   fpFromSdp(sdp: string): string
   {
     const searchStr = "a=fingerprint:sha-256 ";
-    let fpAttStart = sdp.search(searchStr);
+    const fpAttStart = sdp.search(searchStr);
     if (fpAttStart == -1) {
       console.log("Failed to find fingerprint in SDP: ", sdp);
       return "";

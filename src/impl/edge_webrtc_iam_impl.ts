@@ -1,6 +1,6 @@
 import { CoapContentFormat, EdgeWebrtcConnection } from "../edge_webrtc";
 import { EdgeWebrtcIamUtil, IamUser } from "../edge_webrtc_iamutil";
-const cbor = require('cbor');
+import cbor from 'cbor';
 
 
 export class EdgeWebrtcIamUtilImpl implements EdgeWebrtcIamUtil {
