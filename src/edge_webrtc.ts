@@ -137,15 +137,13 @@ export interface EdgeWebrtcConnection {
 
 }
 
-export class EdgeWebrtcConnectionFactory {
-  /**
-   * Create a new WebRTC connection using Nabto Edge
-   *
-   * @returns The created EdgeWebrtcConnection
-   */
-  static create(): EdgeWebrtcConnection {
-    return new WebrtcConnectionImpl();
-  }
+/**
+ * Create a new WebRTC connection using Nabto Edge
+ *
+ * @returns The created EdgeWebrtcConnection
+ */
+export function createEdgeWebrtcConnection() {
+  return new WebrtcConnectionImpl();
 }
 
-export { IamUser, EdgeWebrtcIamUtil, EdgeWebrtcIamUtilFactory } from './edge_webrtc_iamutil';
+export { IamUser, EdgeWebrtcIamUtil, createEdgeWebrtcIamUtil } from './edge_webrtc_iamutil';
