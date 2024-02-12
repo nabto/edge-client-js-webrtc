@@ -4,6 +4,11 @@ import NabtoWebrtcSignaling from "./signaling";
 import { WebRTCMetadata, TurnServer } from "./signaling_types";
 import * as jwt from 'jsonwebtoken';
 
+interface PendingMetadata {
+  mediaStreamTrackTrackId: string;
+  trackId: string;
+}
+
 export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   connectionOpts?: ConnectionOptions;
   connectedCb?: ConnectedCallback;
@@ -20,6 +25,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   connected = false;
 
   private metadata: WebRTCMetadata = { tracks: [] };
+  private pendingMetadata: Array<PendingMetadata> = new Array<PendingMetadata>();
 
   closeResolver?: (value: void | PromiseLike<void>) => void;
 
@@ -178,28 +184,28 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         mid = t.mid;
       }
     }
+
     if (mid == null) {
-      console.error("did not find track ID in metadata creating new track currently not supported!!");
-      throw new Error("New track is currently unsupported")
+      // no transceiver was found which matches the trackId so adding a new track/transceiver/mid
+      this.pendingMetadata.push({ mediaStreamTrackTrackId: track.id, trackId: trackId });
+      this.pc.addTrack(track);
+      const offer = await this.pc.createOffer();
+      await this.pc.setLocalDescription(offer);
       return;
-    }
-
-    const trans = this.pc.getTransceivers();
-    for (const t of trans) {
-      if (t.mid == mid) {
-        console.log("Found mid match! direction: ", t.currentDirection);
-        t.direction = "sendrecv";
-        t.sender.replaceTrack(track);
-        const offer = await this.pc.createOffer();
-        await this.pc.setLocalDescription(offer);
-        return;
+    } else {
+      const trans = this.pc.getTransceivers();
+      for (const t of trans) {
+        if (t.mid == mid) {
+          console.log("Found mid match! direction: ", t.currentDirection);
+          t.direction = "sendrecv";
+          t.sender.replaceTrack(track);
+          const offer = await this.pc.createOffer();
+          await this.pc.setLocalDescription(offer);
+          return;
+        }
       }
+      console.error(`NO MATCH FOUND, Could not find a transceiver with the mid ${mid}`)
     }
-
-    console.error("NO MATCH FOUND")
-    // stream.getTracks().forEach(track => this.pc.addTrack(track, stream));
-    // const offer = await this.pc.createOffer();
-    // await this.pc.setLocalDescription(offer);
   }
 
   private setMetadata(data: WebRTCMetadata) {
@@ -298,6 +304,21 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       console.log(`WebRTC signaling state changed to: ${this.pc.signalingState}`);
       switch (this.pc.signalingState) {
         case "have-local-offer": {
+          this.pendingMetadata.forEach((pm) => {
+            this.pc.getTransceivers().forEach((transceiver) => {
+              if (transceiver.sender.track?.id === pm.mediaStreamTrackTrackId) {
+                const mid = transceiver.mid;
+                if (mid !== null) {
+                  this.metadata.tracks.push({mid: mid, trackId: pm.trackId});
+                } else {
+                  console.log(`mid === null for trackId ${pm.trackId}`);
+                }
+              }
+            })
+          })
+
+          this.pendingMetadata = [];
+
           const localDescription = this.pc.localDescription;
           if (localDescription) {
             this.signaling.sendOffer(localDescription, this.metadata);
