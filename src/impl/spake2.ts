@@ -50,7 +50,7 @@ export class Spake2Client {
     this.X = this.G.mul(this.x);
 
     this.T = this.M.mul(new BN(this.w)).add(this.X);
-    const message = Buffer.from(this.T.encode('hex', true));
+    const message = Buffer.from(this.T.encode('array', false));
 
     return message;
   }
