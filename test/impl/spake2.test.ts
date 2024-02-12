@@ -29,12 +29,12 @@ describe("test spake2", () => {
         const T = s.calculateT();
 
         expect(s.w).not.toBe(null);
-        if (s.w != null) {
+        if (s.w) {
             expect(wRef).toBe(s.toHexString(s.w));
         }
 
         expect(s.X).not.toBe(null);
-        if (s.X != null) {
+        if (s.X) {
             expect(Xref).toBe(s.toHexString(Buffer.from(s.X.encode('array', false))));
         }
 
@@ -46,19 +46,19 @@ describe("test spake2", () => {
         s.calculateKHex(Sref);
 
         expect(s.K).not.toBe(null);
-        if (s.K != null) {
+        if (s.K) {
             expect(Kref).toBe(s.toHexString(Buffer.from(s.K.encode('array', false))));
         }
 
         s.calculateKey(cliFpRef, devFpRef);
         expect(s.TT).not.toBe(null)
-        if (s.TT != null) {
+        if (s.TT) {
             const TT = s.toHexString(s.TT);
             expect(TT).toBe(TTref);
         }
 
         expect(s.key).not.toBe(null);
-        if (s.key != null) {
+        if (s.key) {
             expect(KeyRef).toBe(s.toHexString(s.key));
         }
     })

@@ -47,7 +47,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     this.connection = new NabtoWebrtcConnection();
     return new Promise<void>((resolve) => {
 
-      if (this.connectionOpts == null) {
+      if (!this.connectionOpts) {
         throw new Error("Missing connection options");
       }
 
@@ -78,7 +78,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         await this.pc.setRemoteDescription(desc);
         await this.pc.setLocalDescription(await this.pc.createAnswer());
         const localDescription = this.pc.localDescription;
-        if (localDescription != null) {
+        if (localDescription) {
           this.signaling.sendAnswer(localDescription, this.metadata);
         }
       };
@@ -299,7 +299,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       switch (this.pc.signalingState) {
         case "have-local-offer": {
           const localDescription = this.pc.localDescription;
-          if (localDescription != null) {
+          if (localDescription) {
             this.signaling.sendOffer(localDescription, this.metadata);
           }
           break;
@@ -340,7 +340,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   private async validateJwt(token: string, fingerprint: string, nonce: string): Promise<boolean> {
     const decoded = jwt.decode(token, { complete: true });
-    if (decoded == null) {
+    if (!decoded) {
       return false;
     }
     console.log("decoded JWT: ", decoded);
@@ -349,7 +349,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
     const header: JwtHeaderWithJwk = decoded.header;
 
-    if (header.jwk == null) {
+    if (!header.jwk) {
       return false;
     }
 

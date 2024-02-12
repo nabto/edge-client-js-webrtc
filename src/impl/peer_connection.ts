@@ -84,7 +84,7 @@ export class NabtoWebrtcConnection {
     console.log("Password round 1 response: ", resp);
     const response = JSON.parse(resp);
 
-    if (!this.myPeerConnection || this.myPeerConnection.localDescription == null || this.myPeerConnection.remoteDescription == null) {
+    if (!this.myPeerConnection || !this.myPeerConnection.localDescription || !this.myPeerConnection.remoteDescription) {
       throw new Error("Bad peerConnection");
     }
     const clifp = this.fpFromSdp(this.myPeerConnection.localDescription.sdp);

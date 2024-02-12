@@ -57,7 +57,7 @@ export class Spake2Client {
 
   calculateKHex(S: string) {
     this.S = this.curve.decodePoint(S, "hex");
-    if (!this.w || this.x == null) {
+    if (!this.w || !this.x) {
       throw new Error("invalid state");
     }
     this.K = this.S.add(this.N.neg().mul(new BN(this.w))).mul(this.x)
@@ -70,7 +70,7 @@ export class Spake2Client {
   }
 
   calculateKey(clientFp: string, deviceFp: string) {
-    if (this.w == null || this.S == null || this.T == null || this.K == null) {
+    if (!this.w || !this.S || !this.T || !this.K) {
       throw new Error("invalid state");
     }
     this.TT = this.concat(Buffer.from(this.fromHexString(clientFp)), Buffer.from(this.fromHexString(deviceFp)), Buffer.from(this.T.encode('array', false)), Buffer.from(this.S.encode('array', false)), Buffer.from(this.K.encode('array', false)), Buffer.from(this.w));
