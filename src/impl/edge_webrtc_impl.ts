@@ -58,13 +58,13 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       if (mid != null) {
         const metaTrack: WebRTCMetadataMetaTrack | undefined = this.receivedMetadata.get(mid);
         if (metaTrack) {
-          m.tracks.push(metaTrack);
+          m.tracks?.push(metaTrack);
         } else {
           this.addedMetadata.forEach((pm) => {
             if (transceiver.sender.track?.id === pm.mediaStreamTrackTrackId) {
               const mid = transceiver.mid;
               if (mid !== null) {
-                m.tracks.push({mid: mid, trackId: pm.trackId});
+                m.tracks?.push({mid: mid, trackId: pm.trackId});
               } else {
                 console.log(`mid === null for trackId ${pm.trackId}`);
               }
@@ -75,7 +75,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     })
 
     m.status = "OK";
-    m.tracks.forEach((track) => {
+    m.tracks?.forEach((track) => {
       if (track.error != null && track.error !== "OK") {
         m.status = "FAILED";
       }
@@ -284,9 +284,11 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   private handleMetadata(data: WebRTCMetadata) {
     if (data.status != null && data.status == "FAILED") {
+      if (data.tracks) {
       for (const t of data.tracks) {
         if (t.error != null) {
           console.error(`Device reported Track ${t.mid}:${t.trackId} failed with error: ${t.error}`);
+          }
         }
       }
     }
@@ -496,7 +498,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
 
   private mergeMetadata(metadata: WebRTCMetadata) {
-    metadata.tracks.forEach(element => {
+    metadata.tracks?.forEach(element => {
       this.receivedMetadata.set(element.mid, element);
     });
   }

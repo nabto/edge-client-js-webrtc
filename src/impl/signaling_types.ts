@@ -20,7 +20,7 @@ export const turnResponseType = z.object({ type: z.literal(SignalingMessageTypes
 export const webrtcIceCandidateType = z.object({ type: z.literal(SignalingMessageTypes.WEBRTC_ICE_CANDIDATE), data: z.string() });
 
 export const webrtcMetadataMetaTrackType = z.object({ mid: z.string(), trackId: z.string(), error: z.optional(z.string()) });
-export const webrtcMetadataType = z.object({ noTrickle: z.optional(z.boolean()), status: z.optional(z.string()), tracks: z.array(webrtcMetadataMetaTrackType) });
+export const webrtcMetadataType = z.object({ noTrickle: z.optional(z.boolean()), status: z.optional(z.string()), tracks: z.optional(z.array(webrtcMetadataMetaTrackType)) });
 export const webrtcOfferType = z.object({ type: z.literal(SignalingMessageTypes.WEBRTC_OFFER), data: z.string(), metadata: webrtcMetadataType });
 export const webrtcAnswerType = z.object({ type: z.literal(SignalingMessageTypes.WEBRTC_ANSWER), data: z.string(), metadata: webrtcMetadataType });
 
