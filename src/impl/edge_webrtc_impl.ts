@@ -1,7 +1,7 @@
 import { ClosedCallback, CoapContentFormat, CoapMethod, CoapResponse, ConnectedCallback, ConnectionOptions, EdgeWebrtcConnection, OnTrackCallback } from "../edge_webrtc";
 import { NabtoWebrtcConnection } from "./peer_connection";
 import NabtoWebrtcSignaling from "./signaling";
-import { WebRTCMetadata, TurnServer } from "./signaling_types";
+import { WebRTCMetadata, TurnServer, WebRTCMetadataMetaTrack } from "./signaling_types";
 import * as jwt from 'jsonwebtoken';
 
 interface PendingMetadata {
@@ -24,8 +24,12 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   started = false;
   connected = false;
 
-  private metadata: WebRTCMetadata = { tracks: [] };
-  private pendingMetadata: Array<PendingMetadata> = new Array<PendingMetadata>();
+  polite: boolean = true;
+  makingOffer: boolean = false;
+  ignoreOffer: boolean = false;
+
+  private addedMetadata: Array<PendingMetadata> = new Array<PendingMetadata>();
+  private receivedMetadata: Map<string, WebRTCMetadataMetaTrack> = new Map<string, WebRTCMetadataMetaTrack>();
 
   closeResolver?: (value: void | PromiseLike<void>) => void;
 
@@ -46,6 +50,94 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     this.onTrackCb = fn;
   }
 
+  createMetadata(): WebRTCMetadata {
+    const m: WebRTCMetadata = { tracks: [] };
+
+    this.pc.getTransceivers().forEach((transceiver) => {
+      const mid = transceiver.mid;
+      if (mid != null) {
+        const metaTrack: WebRTCMetadataMetaTrack | undefined = this.receivedMetadata.get(mid);
+        if (metaTrack) {
+          m.tracks.push(metaTrack);
+        } else {
+          this.addedMetadata.forEach((pm) => {
+            if (transceiver.sender.track?.id === pm.mediaStreamTrackTrackId) {
+              const mid = transceiver.mid;
+              if (mid !== null) {
+                m.tracks.push({mid: mid, trackId: pm.trackId});
+              } else {
+                console.log(`mid === null for trackId ${pm.trackId}`);
+              }
+            }
+          })
+        }
+      }
+    })
+
+    m.status = "OK";
+    m.tracks.forEach((track) => {
+      if (track.error != null && track.error !== "OK") {
+        m.status = "FAILED";
+      }
+    })
+    return m;
+  }
+
+  async sendDescription(localDescription?: RTCSessionDescription | null): Promise<void> {
+    if (localDescription) {
+      if (localDescription.type === "offer") {
+        this.signaling.sendOffer(localDescription, this.createMetadata());
+      } else if (localDescription.type === "answer") {
+        this.signaling.sendAnswer(localDescription, this.createMetadata());
+      } else {
+        console.log("Something happened which should not happen, please debug the code.");
+      }
+    }
+  }
+
+  async handleIceCandidate(candidate?: RTCIceCandidate) {
+    if (candidate) {
+      try {
+        await this.pc.addIceCandidate(candidate);
+      } catch (err) {
+        if (!this.ignoreOffer) {
+          throw err;
+        }
+      }
+    }
+  }
+
+  async handleDescription(description?: RTCSessionDescription, metadata?: WebRTCMetadata) : Promise<void> {
+    try {
+      if (description) {
+        const offerCollision =
+          description.type === "offer" &&
+          (this.makingOffer || this.pc.signalingState !== "stable");
+
+        this.ignoreOffer = !this.polite && offerCollision;
+        if (this.ignoreOffer) {
+          return;
+        }
+
+        if (metadata) {
+          this.handleMetadata(metadata);
+        }
+        await this.pc.setRemoteDescription(description);
+        if (description.type === "offer") {
+          await this.pc.setLocalDescription();
+          const localDescription = this.pc.localDescription;
+          this.sendDescription(localDescription);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      if (err instanceof Error) {
+        this.closeContext(err);
+      } else {
+        this.closeContext(new Error("unknown error type"));
+      }
+    }
+  }
 
   connect(): Promise<void> {
     this.started = true;
@@ -69,33 +161,19 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
       this.signaling.onanswer = async (msg) => {
         const answer = JSON.parse(msg.data);
-        this.setMetadata(msg.metadata);
         const desc = new RTCSessionDescription(answer);
-        await this.pc.setRemoteDescription(desc).catch(reason => {
-          console.error(`setRemoteDesc failed with ${reason}`);
-          this.closeContext(reason);
-        });
+        await this.handleDescription(desc, msg.metadata);
       };
 
       this.signaling.onoffer = async (msg) => {
         const offer = JSON.parse(msg.data);
-        this.setMetadata(msg.metadata);
         const desc = new RTCSessionDescription(offer);
-        await this.pc.setRemoteDescription(desc);
-        await this.pc.setLocalDescription(await this.pc.createAnswer());
-        const localDescription = this.pc.localDescription;
-        if (localDescription) {
-          this.signaling.sendAnswer(localDescription, this.metadata);
-        }
+        await this.handleDescription(desc, msg.metadata);
       };
 
       this.signaling.onicecandidate = async (msg) => {
-        try {
-          const candidate = new RTCIceCandidate(JSON.parse(msg.data));
-          await this.pc.addIceCandidate(candidate);
-        } catch (err) {
-          console.error(`Failed to add candidate to peer connection`, err);
-        }
+        const candidate = new RTCIceCandidate(JSON.parse(msg.data));
+        await this.handleIceCandidate(candidate);
       };
 
       this.signaling.onerror = (msg, err) => {
@@ -108,8 +186,8 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
         const coapChannel = this.pc.createDataChannel("coap");
 
-        const offer = await this.pc.createOffer();
-        await this.pc.setLocalDescription(offer);
+        //const offer = await this.pc.createOffer();
+        //await this.pc.setLocalDescription(offer);
 
         // this.signaling.sendOffer(this.pc.localDescription, { noTrickle: false });
 
@@ -177,9 +255,9 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   // TODO: our example does not use this
   async addTrack(track: MediaStreamTrack, trackId: string): Promise<void> {
-    console.log("My metadata: ", this.metadata);
+    console.log("My receivedMetadata: ", this.receivedMetadata);
     let mid: string | undefined;
-    for (const t of this.metadata.tracks) {
+    for (const t of this.receivedMetadata.values()) {
       if (t.trackId == trackId) {
         mid = t.mid;
       }
@@ -187,10 +265,8 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
     if (mid == null) {
       // no transceiver was found which matches the trackId so adding a new track/transceiver/mid
-      this.pendingMetadata.push({ mediaStreamTrackTrackId: track.id, trackId: trackId });
-      this.pc.addTrack(track);
-      const offer = await this.pc.createOffer();
-      await this.pc.setLocalDescription(offer);
+      this.addedMetadata.push({ mediaStreamTrackTrackId: track.id, trackId: trackId });
+      this.pc.addTransceiver(track, {});
       return;
     } else {
       const trans = this.pc.getTransceivers();
@@ -199,8 +275,6 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
           console.log("Found mid match! direction: ", t.currentDirection);
           t.direction = "sendrecv";
           t.sender.replaceTrack(track);
-          const offer = await this.pc.createOffer();
-          await this.pc.setLocalDescription(offer);
           return;
         }
       }
@@ -208,7 +282,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     }
   }
 
-  private setMetadata(data: WebRTCMetadata) {
+  private handleMetadata(data: WebRTCMetadata) {
     if (data.status != null && data.status == "FAILED") {
       for (const t of data.tracks) {
         if (t.error != null) {
@@ -216,7 +290,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         }
       }
     }
-    this.metadata = data;
+    this.mergeMetadata(data);
   }
 
   private closeContext(error?: Error | Event) {
@@ -303,28 +377,15 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     this.pc.onsignalingstatechange = () => {
       console.log(`WebRTC signaling state changed to: ${this.pc.signalingState}`);
       switch (this.pc.signalingState) {
-        case "have-local-offer": {
-          this.pendingMetadata.forEach((pm) => {
-            this.pc.getTransceivers().forEach((transceiver) => {
-              if (transceiver.sender.track?.id === pm.mediaStreamTrackTrackId) {
-                const mid = transceiver.mid;
-                if (mid !== null) {
-                  this.metadata.tracks.push({mid: mid, trackId: pm.trackId});
-                } else {
-                  console.log(`mid === null for trackId ${pm.trackId}`);
-                }
-              }
-            })
-          })
+        // case "have-local-offer": {
+        //   this.consumePendingMetadata();
 
-          this.pendingMetadata = [];
-
-          const localDescription = this.pc.localDescription;
-          if (localDescription) {
-            this.signaling.sendOffer(localDescription, this.metadata);
-          }
-          break;
-        }
+        //   const localDescription = this.pc.localDescription;
+        //   if (localDescription) {
+        //     this.signaling.sendOffer(localDescription, this.metadata);
+        //   }
+        //   break;
+        // }
         case "closed": {
           console.log("closing from signalingstatechange");
           this.closeContext();
@@ -336,15 +397,25 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       }
     };
 
-    this.pc.onnegotiationneeded = () => {
+    this.pc.onnegotiationneeded = async () => {
       console.log("Negotiation needed!!");
-
+      //this.consumePendingMetadata();
+      try {
+        this.makingOffer = true;
+        await this.pc.setLocalDescription();
+        const localDescription = this.pc.localDescription;
+        this.sendDescription(localDescription);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        this.makingOffer = false;
+      }
     };
 
     this.pc.ontrack = (ev: RTCTrackEvent) => {
       const mid = ev.transceiver.mid;
       if (this.onTrackCb) {
-        for (const t of this.metadata.tracks) {
+        for (const t of this.receivedMetadata.values()) {
           if (t.mid == mid) {
             return this.onTrackCb(ev, t.trackId, t.error);
           }
@@ -423,5 +494,11 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   }
 
+
+  private mergeMetadata(metadata: WebRTCMetadata) {
+    metadata.tracks.forEach(element => {
+      this.receivedMetadata.set(element.mid, element);
+    });
+  }
 
 }
