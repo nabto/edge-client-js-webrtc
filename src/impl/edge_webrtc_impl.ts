@@ -186,11 +186,6 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
         const coapChannel = this.pc.createDataChannel("coap");
 
-        //const offer = await this.pc.createOffer();
-        //await this.pc.setLocalDescription(offer);
-
-        // this.signaling.sendOffer(this.pc.localDescription, { noTrickle: false });
-
         coapChannel.addEventListener("open", async () => {
           this.connection.setCoapDataChannel(coapChannel);
           this.connected = true;
@@ -253,7 +248,6 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   // TODO: our example currently do not use streams, so it is not implemented
   //openEdgeStream(streamPort: number): Promise<EdgeStream> {}
 
-  // TODO: our example does not use this
   async addTrack(track: MediaStreamTrack, trackId: string): Promise<void> {
     console.log("My receivedMetadata: ", this.receivedMetadata);
     let mid: string | undefined;
@@ -292,7 +286,11 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         }
       }
     }
-    this.mergeMetadata(data);
+
+    // Update receivedMetadata with incoming metadata
+    data.tracks?.forEach(element => {
+      this.receivedMetadata.set(element.mid, element);
+    });
   }
 
   private closeContext(error?: Error | Event) {
@@ -379,15 +377,6 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     this.pc.onsignalingstatechange = () => {
       console.log(`WebRTC signaling state changed to: ${this.pc.signalingState}`);
       switch (this.pc.signalingState) {
-        // case "have-local-offer": {
-        //   this.consumePendingMetadata();
-
-        //   const localDescription = this.pc.localDescription;
-        //   if (localDescription) {
-        //     this.signaling.sendOffer(localDescription, this.metadata);
-        //   }
-        //   break;
-        // }
         case "closed": {
           console.log("closing from signalingstatechange");
           this.closeContext();
@@ -401,7 +390,6 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
     this.pc.onnegotiationneeded = async () => {
       console.log("Negotiation needed!!");
-      //this.consumePendingMetadata();
       try {
         this.makingOffer = true;
         await this.pc.setLocalDescription();
@@ -495,12 +483,4 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     return fp == fingerprint;
 
   }
-
-
-  private mergeMetadata(metadata: WebRTCMetadata) {
-    metadata.tracks?.forEach(element => {
-      this.receivedMetadata.set(element.mid, element);
-    });
-  }
-
 }
