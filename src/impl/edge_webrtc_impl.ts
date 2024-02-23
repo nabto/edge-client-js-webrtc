@@ -324,6 +324,9 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       if (this.closedCb) {
         this.closedCb(error);
       }
+      if (this.closeResolver) {
+        this.closeResolver();
+      }
     } else {
       console.log("CloseContext when already closed")
     }
