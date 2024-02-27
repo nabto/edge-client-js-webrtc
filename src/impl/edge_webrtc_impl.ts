@@ -1,4 +1,4 @@
-import { ClosedCallback, CoapContentFormat, CoapMethod, CoapResponse, ConnectedCallback, ConnectionOptions, EdgeWebrtcConnection, OnTrackCallback } from "../edge_webrtc";
+import { ClosedCallback, CoapContentFormat, CoapMethod, CoapResponse, ConnectionOptions, EdgeWebrtcConnection, NabtoWebrtcError, NabtoWebrtcErrorCode, OnTrackCallback } from "../edge_webrtc";
 import { NabtoWebrtcConnection } from "./peer_connection";
 import NabtoWebrtcSignaling from "./signaling";
 import { WebRTCMetadata, TurnServer, WebRTCMetadataMetaTrack } from "./signaling_types";
@@ -11,7 +11,6 @@ interface PendingMetadata {
 
 export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   connectionOpts?: ConnectionOptions;
-  connectedCb?: ConnectedCallback;
   closedCb?: ClosedCallback;
   onTrackCb?: OnTrackCallback;
 
@@ -32,13 +31,10 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   private receivedMetadata: Map<string, WebRTCMetadataMetaTrack> = new Map<string, WebRTCMetadataMetaTrack>();
 
   closeResolver?: (value: void | PromiseLike<void>) => void;
+  connectResolver?: {resolve: (value: void | PromiseLike<void>) => void, reject: (reason?: unknown) => void}
 
   setConnectionOptions(opts: ConnectionOptions): void {
     this.connectionOpts = opts;
-  }
-
-  onConnected(fn: ConnectedCallback): void {
-    this.connectedCb = fn;
   }
 
   onClosed(fn: ClosedCallback): void {
@@ -131,23 +127,24 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       }
     } catch (err) {
       console.error(err);
-      if (err instanceof Error) {
-        this.closeContext(err);
-      } else {
-        this.closeContext(new Error("unknown error type"));
-      }
+      this.closeContext(new NabtoWebrtcError("Unknown error", NabtoWebrtcErrorCode.UNKNOWN, err));
     }
   }
 
   connect(): Promise<void> {
-    this.started = true;
-    this.signaling = new NabtoWebrtcSignaling();
-    this.connection = new NabtoWebrtcConnection();
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
+      if (this.started) {
+        throw new Error("Invalid state");
+      }
 
       if (!this.connectionOpts) {
         throw new Error("Missing connection options");
       }
+
+      this.started = true;
+      this.connectResolver = {resolve: resolve, reject: reject};
+      this.signaling = new NabtoWebrtcSignaling();
+      this.connection = new NabtoWebrtcConnection();
 
       if (this.connectionOpts.signalingServerUrl != null) {
         console.log("Setting signaling URL: ", this.connectionOpts.signalingServerUrl)
@@ -176,8 +173,8 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         await this.handleIceCandidate(candidate);
       };
 
-      this.signaling.onerror = (msg, err) => {
-        console.log("Signaling error: ", msg, err);
+      this.signaling.onerror = (err) => {
+        console.log("Signaling error: ", err);
         this.closeContext(err);
       };
 
@@ -189,15 +186,20 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         coapChannel.addEventListener("open", async () => {
           this.connection.setCoapDataChannel(coapChannel);
           this.connected = true;
-          if (this.connectedCb) {
-            this.connectedCb();
+          if (this.connectResolver) {
+            this.connectResolver = undefined;
+            resolve();
           }
         });
 
       };
 
-      this.signaling.signalingConnect();
-      resolve();
+      try {
+        this.signaling.signalingConnect();
+      } catch(err) {
+        this.connectResolver = undefined;
+        throw err;
+      }
     });
   }
 
@@ -293,7 +295,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     });
   }
 
-  private closeContext(error?: Error | Event) {
+  private closeContext(error?: NabtoWebrtcError) {
     if (this.started) {
       this.started = false;
       this.connected = false;
@@ -321,6 +323,11 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
       this.pc.close();
       this.signaling.close();
+      if (this.connectResolver) {
+        const rej = this.connectResolver.reject;
+        this.connectResolver = undefined;
+        rej(error);
+      }
       if (this.closedCb) {
         this.closedCb(error);
       }
@@ -363,7 +370,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         case "failed":
         case "disconnected": {
           console.log("closing from iceconnectionstatechange");
-          this.closeContext(new Error("Connection closed by device"));
+          this.closeContext(new NabtoWebrtcError("Connection closed by device", NabtoWebrtcErrorCode.DEVICE_CLOSED));
           break;
         }
         default: {

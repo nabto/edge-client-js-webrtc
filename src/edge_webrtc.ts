@@ -6,10 +6,43 @@ import { WebrtcConnectionImpl } from "./impl/edge_webrtc_impl";
 export type ConnectedCallback = () => void;
 
 /**
+ * Error codes used by the NabtoWebrtcError class
+ */
+export enum NabtoWebrtcErrorCode {
+  DEVICE_CLOSED,
+  DEVICE_SIGNALING_DENIED,
+  DEVICE_INTERNAL_ERROR,
+  BASESTATION_SCT_REJECTED,
+  BASESTATION_DEVICE_OFFLINE,
+  BASESTATION_UNKNOWN_SERVERKEY,
+  BASESTATION_UNKNOWN_PRODUCT_ID,
+  BASESTATION_UNKNOWN_DEVICE_ID,
+  BASESTATION_INTERNAL_ERROR,
+  CONNECTION_TIMEOUT,
+  UNKNOWN,
+}
+
+/**
+ * Error used by the `ClosedCallback()` and for Nabto specific promise rejections. Errors may have additional information for debugging in the `Error.cause`
+ */
+export class NabtoWebrtcError extends Error {
+  code: NabtoWebrtcErrorCode
+  constructor(message: string, code: NabtoWebrtcErrorCode, cause?: unknown) {
+    if (cause !== undefined) {
+      super(message, {cause: cause})
+    } else {
+      super(message);
+    }
+    this.code = code;
+    Object.setPrototypeOf(this, NabtoWebrtcError.prototype);
+  }
+}
+
+/**
  * Callback function when a connection is closed
  * @param error this is optional is is either a event from the websocket connection or an error object describing an error.
  */
-export type ClosedCallback = (error?: Error | Event) => void;
+export type ClosedCallback = (error?: NabtoWebrtcError) => void;
 
 /**
  * Callback function when a new track is added by the device
@@ -59,13 +92,6 @@ export interface EdgeWebrtcConnection {
    * @param opts Options for which connection to open
    */
   setConnectionOptions(opts: ConnectionOptions): void;
-
-  /**
-   * Set callback to be invoked when the connection WebRTC is established
-   *
-   * @param fn The callback to set
-   */
-  onConnected(fn: ConnectedCallback): void;
 
   /**
    * Set callback to be invoked when the connection WebRTC is closed
