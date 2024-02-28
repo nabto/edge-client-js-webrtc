@@ -309,7 +309,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   private closeContext(error?: NabtoWebrtcError) {
     if (this.started) {
-      let wasConnected = this.connected;
+      const wasConnected = this.connected;
       this.started = false;
       this.connected = false;
       console.log("Closing peer connection");
