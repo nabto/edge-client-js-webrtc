@@ -216,6 +216,9 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
 
   async coapInvoke(method: CoapMethod, path: string, contentFormat?: number, payload?: Buffer): Promise<CoapResponse> {
+    if (!this.connected) {
+      throw new Error("Not Connected")
+    }
     const response = await this.connection.coapInvoke(method, path, contentFormat, payload);
     const resp = JSON.parse(response);
     const result: CoapResponse = {
@@ -228,10 +231,16 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   }
 
   passwordAuthenticate(username: string, password: string): Promise<void> {
+    if (!this.connected) {
+      throw new Error("Not Connected")
+    }
     return this.connection.passwordAuthenticate(username, password);
   }
 
   async validateFingerprint(fingerprint: string): Promise<boolean> {
+    if (!this.connected) {
+      throw new Error("Not Connected")
+    }
     const nonce = crypto.randomUUID();
     const response = await this.connection.coapInvoke("POST", `/webrtc/challenge`, CoapContentFormat.APPLICATION_JSON, JSON.stringify({ challenge: nonce }));
     const resp = JSON.parse(response);
@@ -251,6 +260,9 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
   //openEdgeStream(streamPort: number): Promise<EdgeStream> {}
 
   async addTrack(track: MediaStreamTrack, trackId: string): Promise<void> {
+    if (!this.connected) {
+      throw new Error("Not Connected")
+    }
     console.log("My receivedMetadata: ", this.receivedMetadata);
     let mid: string | undefined;
     for (const t of this.receivedMetadata.values()) {
@@ -297,6 +309,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   private closeContext(error?: NabtoWebrtcError) {
     if (this.started) {
+      let wasConnected = this.connected;
       this.started = false;
       this.connected = false;
       console.log("Closing peer connection");
@@ -328,7 +341,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         this.connectResolver = undefined;
         rej(error);
       }
-      if (this.closedCb) {
+      if (this.closedCb && wasConnected) {
         this.closedCb(error);
       }
       if (this.closeResolver) {

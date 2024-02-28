@@ -75,7 +75,7 @@ export default class NabtoWebrtcSignaling {
     ws.addEventListener("close", e => {
       console.log("WS closed: ", e);
       if (this.onerror) {
-        this.onerror(new NabtoWebrtcError("Websocket connection error", this.closeEvToError(e), e));
+        this.onerror(new NabtoWebrtcError(e.reason, this.closeEvToError(e), e));
       }
       this._ws = undefined;
     });
