@@ -1,3 +1,4 @@
+import { NabtoWebrtcError, NabtoWebrtcErrorCode } from "../edge_webrtc";
 import { LoginRequest, LoginResponse, SignalingMessage, SignalingMessageTypes, TurnResponse, WebRTCAnswer, WebRTCIceCandidate, WebRTCMetadata, WebRTCOffer, signalingMessageType } from "./signaling_types";
 
 interface SctDeviceConfig {
@@ -35,7 +36,7 @@ export default class NabtoWebrtcSignaling {
   onanswer?: (answer: WebRTCAnswer) => void;
   onicecandidate?: (candidate: WebRTCIceCandidate) => void;
   onturncredentials?: (creds: TurnResponse) => void;
-  onerror?: (errorString: string, errorObject: Event | Error) => void;
+  onerror?: (err: NabtoWebrtcError) => void;
 
   setDeviceConfigSct(productId: string, deviceId: string, sct: string) {
     this.config = {
@@ -66,12 +67,16 @@ export default class NabtoWebrtcSignaling {
 
     ws.addEventListener("error", e => {
       console.log("Websocket error: ", e);
-      this.onerror?.("Websocket connection error", e);
+      if (this.onerror) {
+        this.onerror(new NabtoWebrtcError("Websocket connection error", NabtoWebrtcErrorCode.UNKNOWN, e));
+      }
     });
 
     ws.addEventListener("close", e => {
       console.log("WS closed: ", e);
-      this.onerror?.("Websocket connection error", e);
+      if (this.onerror) {
+        this.onerror(new NabtoWebrtcError(e.reason, this.closeEvToError(e), e));
+      }
       this._ws = undefined;
     });
 
@@ -180,7 +185,8 @@ export default class NabtoWebrtcSignaling {
 
       default: {
         console.error(`Received unknown message: ${msg}`);
-        this.onerror?.("Unknown Nabto Signaling message", new Error("Unknown signaling message of type ${msg.type}"));
+        if (this.onerror)
+        this.onerror(new NabtoWebrtcError("Unknown Nabto Signaling message", NabtoWebrtcErrorCode.UNKNOWN, msg));
         break;
       }
     }
@@ -190,5 +196,19 @@ export default class NabtoWebrtcSignaling {
     const json = JSON.stringify(msg);
     console.log(`sendToServer ${json}`);
     this.ws.send(json);
+  }
+
+  private closeEvToError(ev: CloseEvent): NabtoWebrtcErrorCode {
+    switch(ev.code) {
+      case 1000: return NabtoWebrtcErrorCode.DEVICE_CLOSED;
+      case 4001: return NabtoWebrtcErrorCode.DEVICE_SIGNALING_DENIED;
+      case 4002: return NabtoWebrtcErrorCode.BASESTATION_TOKEN_REJECTED;
+      case 4003: return NabtoWebrtcErrorCode.BASESTATION_DEVICE_OFFLINE;
+      case 4005: return NabtoWebrtcErrorCode.BASESTATION_UNKNOWN_PRODUCT_ID;
+      case 4006: return NabtoWebrtcErrorCode.BASESTATION_UNKNOWN_DEVICE_ID;
+      case 4007: return NabtoWebrtcErrorCode.CONNECTION_TIMEOUT;
+      case 4010: return NabtoWebrtcErrorCode.DEVICE_INTERNAL_ERROR;
+      default: return NabtoWebrtcErrorCode.UNKNOWN;
+    }
   }
 }
