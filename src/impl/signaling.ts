@@ -202,14 +202,11 @@ export default class NabtoWebrtcSignaling {
     switch(ev.code) {
       case 1000: return NabtoWebrtcErrorCode.DEVICE_CLOSED;
       case 4001: return NabtoWebrtcErrorCode.DEVICE_SIGNALING_DENIED;
-      case 4002: return NabtoWebrtcErrorCode.BASESTATION_SCT_REJECTED;
+      case 4002: return NabtoWebrtcErrorCode.BASESTATION_TOKEN_REJECTED;
       case 4003: return NabtoWebrtcErrorCode.BASESTATION_DEVICE_OFFLINE;
-      case 4004: return NabtoWebrtcErrorCode.BASESTATION_UNKNOWN_SERVERKEY;
       case 4005: return NabtoWebrtcErrorCode.BASESTATION_UNKNOWN_PRODUCT_ID;
       case 4006: return NabtoWebrtcErrorCode.BASESTATION_UNKNOWN_DEVICE_ID;
       case 4007: return NabtoWebrtcErrorCode.CONNECTION_TIMEOUT;
-      case 4008:
-      case 4009: return NabtoWebrtcErrorCode.BASESTATION_INTERNAL_ERROR;
       case 4010: return NabtoWebrtcErrorCode.DEVICE_INTERNAL_ERROR;
       default: return NabtoWebrtcErrorCode.UNKNOWN;
     }
