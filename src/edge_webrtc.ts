@@ -1,11 +1,6 @@
 import { WebrtcConnectionImpl } from "./impl/edge_webrtc_impl";
 
 /**
- * Callback function when a connection is established
- */
-export type ConnectedCallback = () => void;
-
-/**
  * Error codes used by the NabtoWebrtcError class
  */
 export enum NabtoWebrtcErrorCode {
@@ -51,8 +46,14 @@ export type ClosedCallback = (error?: NabtoWebrtcError) => void;
  */
 export type OnTrackCallback = (event: RTCTrackEvent, trackId?: string, error?: string) => void;
 
+/**
+ * CoAP method type for making CoAP requests
+ */
 export type CoapMethod = "GET" | "POST" | "PUT" | "DELETE";
 
+/**
+ * CoAP content Formats for CoAP payloads
+ */
 export enum CoapContentFormat {
   TEXT_PLAIN_UTF8 = 0,
   APPLICATION_LINK_FORMAT = 40,
@@ -62,6 +63,9 @@ export enum CoapContentFormat {
   APPLICATION_CBOR = 60
 }
 
+/**
+ * Options type used to define which device to connect to.
+ */
 export type ConnectionOptions = {
   productId: string,
   deviceId: string,
@@ -69,6 +73,9 @@ export type ConnectionOptions = {
   signalingServerUrl?: string,
 };
 
+/**
+ * CoAP response object type returned when executing CoAP requests.
+ */
 export type CoapResponse = {
   statusCode: number,
   contentFormat?: number,
@@ -83,6 +90,9 @@ export type CoapResponse = {
 //   close(): Promise<void>;
 // }
 
+/**
+ * Main Connection interface used to connect to a device and interact with it.
+ */
 export interface EdgeWebrtcConnection {
   /**
    * Set connection options for this WebRTC connection. Must be called before connect()
