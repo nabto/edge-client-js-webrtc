@@ -287,6 +287,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
         }
       }
       console.error(`NO MATCH FOUND, Could not find a transceiver with the mid ${mid}`)
+      throw new Error(`Transceiver missing for mid: ${mid}`);
     }
   }
 
