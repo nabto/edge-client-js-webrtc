@@ -179,7 +179,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       };
 
       this.signaling.onturncredentials = async (creds) => {
-        this.setupPeerConnection(creds.servers);
+        this.setupPeerConnection(creds.iceServers);
 
         const coapChannel = this.pc.createDataChannel("coap");
 
@@ -355,14 +355,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
 
   private setupPeerConnection(turnServers: TurnServer[]) {
 
-    const iceServers: RTCIceServer[] = [{ urls: "stun:stun.nabto.net" }]
-    for (const s of turnServers) {
-      iceServers.push({
-        urls: `${s.hostname}`,
-        username: s.username,
-        credential: s.password,
-      });
-    }
+    const iceServers: RTCIceServer[] = turnServers;
 
     console.log("ice servers: ", iceServers);
 
