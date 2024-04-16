@@ -1,7 +1,7 @@
 import { ClosedCallback, CoapContentFormat, CoapMethod, CoapResponse, ConnectionOptions, EdgeWebrtcConnection, NabtoWebrtcError, NabtoWebrtcErrorCode, OnTrackCallback } from "../edge_webrtc";
 import { NabtoWebrtcConnection } from "./peer_connection";
 import NabtoWebrtcSignaling from "./signaling";
-import { WebRTCMetadata, TurnServer, WebRTCMetadataMetaTrack } from "./signaling_types";
+import { WebRTCMetadata, WebRTCMetadataMetaTrack } from "./signaling_types";
 import * as jwt from 'jsonwebtoken';
 
 interface PendingMetadata {
@@ -179,7 +179,20 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       };
 
       this.signaling.onturncredentials = async (creds) => {
-        this.setupPeerConnection(creds.servers);
+        if (creds.iceServers) {
+          this.setupPeerConnection(creds.iceServers);
+        } else if (creds.servers) {
+          const iceServers: RTCIceServer[] = [];
+          for (const s of creds.servers) {
+            iceServers.push({
+              urls: `${s.hostname}`,
+              username: s.username,
+              credential: s.password,
+            });
+          }
+          this.setupPeerConnection(iceServers);
+        }
+
 
         const coapChannel = this.pc.createDataChannel("coap");
 
@@ -353,16 +366,7 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     }
   }
 
-  private setupPeerConnection(turnServers: TurnServer[]) {
-
-    const iceServers: RTCIceServer[] = [{ urls: "stun:stun.nabto.net" }]
-    for (const s of turnServers) {
-      iceServers.push({
-        urls: `${s.hostname}`,
-        username: s.username,
-        credential: s.password,
-      });
-    }
+  private setupPeerConnection(iceServers: RTCIceServer[]) {
 
     console.log("ice servers: ", iceServers);
 
