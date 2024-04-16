@@ -1,7 +1,7 @@
 import { ClosedCallback, CoapContentFormat, CoapMethod, CoapResponse, ConnectionOptions, EdgeWebrtcConnection, NabtoWebrtcError, NabtoWebrtcErrorCode, OnTrackCallback } from "../edge_webrtc";
 import { NabtoWebrtcConnection } from "./peer_connection";
 import NabtoWebrtcSignaling from "./signaling";
-import { WebRTCMetadata, TurnServer, WebRTCMetadataMetaTrack } from "./signaling_types";
+import { WebRTCMetadata, WebRTCMetadataMetaTrack } from "./signaling_types";
 import * as jwt from 'jsonwebtoken';
 
 interface PendingMetadata {
