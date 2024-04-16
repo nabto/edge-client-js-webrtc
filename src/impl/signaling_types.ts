@@ -15,8 +15,11 @@ export const enum SignalingMessageTypes {
 export const loginRequestType = z.object({ type: z.literal(SignalingMessageTypes.LOGIN_REQUEST), productId: z.string(), deviceId: z.string(), sct: z.optional(z.string()), jwt: z.optional(z.string()), serverKey: z.optional(z.string()) });
 export const loginResponseType = z.object({ type: z.literal(SignalingMessageTypes.LOGIN_RESPONSE) });
 export const turnRequestType = z.object({ type: z.literal(SignalingMessageTypes.TURN_REQUEST) });
-const turnServerType = z.object({ urls: z.array(z.string()), username: z.optional(z.string()), credential: z.optional(z.string()) });
-export const turnResponseType = z.object({ type: z.literal(SignalingMessageTypes.TURN_RESPONSE), iceServers: z.array(turnServerType) });
+
+const turnServerType = z.object({ hostname: z.string(), port: z.number(), username: z.string(), password: z.string() });
+const iceServerType = z.object({ urls: z.array(z.string()), username: z.optional(z.string()), credential: z.optional(z.string()) });
+
+export const turnResponseType = z.object({ type: z.literal(SignalingMessageTypes.TURN_RESPONSE), iceServers: z.optional(z.array(iceServerType)), servers: z.optional(z.array(turnServerType)) });
 export const webrtcIceCandidateType = z.object({ type: z.literal(SignalingMessageTypes.WEBRTC_ICE_CANDIDATE), data: z.string() });
 
 export const webrtcMetadataMetaTrackType = z.object({ mid: z.string(), trackId: z.string(), error: z.optional(z.string()) });
