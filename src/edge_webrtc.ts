@@ -42,9 +42,8 @@ export type ClosedCallback = (error?: NabtoWebrtcError) => void;
  *
  * @param event The native RTCTrackEvent emitted by the browser
  * @param trackId The track ID reported by the device for this event
- * @param error An error if the device failed to handle this track properly
  */
-export type OnTrackCallback = (event: RTCTrackEvent, trackId?: string, error?: string) => void;
+export type OnTrackCallback = (event: RTCTrackEvent, trackId?: string) => void;
 
 /**
  * CoAP method type for making CoAP requests
@@ -167,7 +166,7 @@ export interface EdgeWebrtcConnection {
 
   // Warning: addTrack is experimental and may not be stable
   // Warning: addTrack will currently fail if a track with same trackId does not already exist (ie. you are adding downstream media to an track the device created)
-  addTrack(track: MediaStreamTrack, trackId: string): Promise<void>;
+  addTrack(track: MediaStreamTrack, trackId: string): void;
 
 }
 
