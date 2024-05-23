@@ -15,6 +15,8 @@ let username = null;
 let password = null;
 let webrtcConnection = null;
 let connected = false;
+let datachannelOpen = false;
+let datachannel = null;
 
 function connect() {
   if (connected) {
@@ -186,6 +188,26 @@ async function downstreamVideo() {
   }
 }
 
+async function createDatachannel(label) {
+  datachannel = await webrtcConnection.createDatachannel(label);
+  datachannel.addEventListener("message", (event) => {
+    let dec = new TextDecoder("utf-8");
+    boxLog(`Got datachannel message: ${dec.decode(event.data)}`);
+  });
+  datachannel.addEventListener("open", (event) => {
+    datachannelOpen = true;
+    updateUi();
+  })
+  datachannel.addEventListener("close", (event) => {
+    datachannelOpen = false;
+    updateUi();
+  })
+}
+
+async function datachannelSend(data) {
+  datachannel.send(data);
+}
+
 function parseLink() {
   const devLink = document.getElementById("devicelink").value;
   if (devLink.length == 0) {
@@ -289,5 +311,8 @@ function updateUi() {
   document.getElementById("oauth").disabled = document.getElementById("oauthtoken").value.length == 0;
   document.getElementById("audiodown").disabled = !connected;
   document.getElementById("videodown").disabled = !connected;
+  document.getElementById("createDc").disabled = (!connected || document.getElementById("dclabel").value.length == 0);
+  document.getElementById("dcsenddiv").hidden = (!connected || !datachannelOpen);
   canCoap(connected);
+
 }
