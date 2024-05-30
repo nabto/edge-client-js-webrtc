@@ -304,6 +304,11 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
     }
   }
 
+  async createDatachannel(label: string): Promise<RTCDataChannel> {
+    const channel = this.pc.createDataChannel(label);
+    return channel;
+  }
+
   private handleMetadata(data: WebRTCMetadata) {
     if (data.status != null && data.status == "FAILED") {
       if (data.tracks) {
