@@ -169,7 +169,17 @@ export interface EdgeWebrtcConnection {
   // Warning: addTrack will currently fail if a track with same trackId does not already exist (ie. you are adding downstream media to an track the device created)
   addTrack(track: MediaStreamTrack, trackId: string): Promise<void>;
 
-  // Warning: createDatachannel is experimental
+  //
+  /**
+   * Warning: createDatachannel is experimental
+   *
+   * Create a new datachannel to the device. WebRTC Datachannels are used internally in Nabto for CoAP requests and streaming.
+   *
+   * This means datachannels MUST NEVER use the label `coap` or labels beginning with `stream-`!
+   *
+   * @param label Label to set for the datachannel.
+   * @returns Promise with the created RTCDataChannel object
+   */
   createDatachannel(label: string): Promise<RTCDataChannel>;
 
 }
