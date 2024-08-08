@@ -147,8 +147,11 @@ export class WebrtcConnectionImpl implements EdgeWebrtcConnection {
       this.connection = new NabtoWebrtcConnection();
 
       if (this.connectionOpts.signalingServerUrl != null) {
-        console.log("Setting signaling URL: ", this.connectionOpts.signalingServerUrl)
-        this.signaling.signalingHost = this.connectionOpts.signalingServerUrl;
+        console.log(`Setting signaling URL: ${this.connectionOpts.signalingServerUrl}/signaling/v1`)
+        this.signaling.signalingHost = `${this.connectionOpts.signalingServerUrl}/signaling/v1`;
+      } else {
+        console.log(`using default signaling URL: wss://${this.connectionOpts.productId}.signaling.nabto.net/signaling/v1`);
+        this.signaling.signalingHost = `wss://${this.connectionOpts.productId}.signaling.nabto.net/signaling/v1`;
       }
       this.signaling.setDeviceConfigSct(this.connectionOpts.productId, this.connectionOpts.deviceId, this.connectionOpts.sct);
 
