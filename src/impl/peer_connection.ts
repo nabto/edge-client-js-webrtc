@@ -84,7 +84,7 @@ export class NabtoWebrtcConnection {
     console.log("Password round 1 response: ", resp);
     const response = JSON.parse(resp);
 
-    if (!response.statusCode || response.statusCode != 201) {
+    if (response.statusCode != 201) {
       throw new Error(`Password auth 1 CoAP returned status: ${response.statusCode}`);
     }
 
@@ -99,7 +99,7 @@ export class NabtoWebrtcConnection {
     const resp2 = await this.coapInvoke("POST", "/p2p/pwd-auth/2", CoapContentFormat.APPLICATION_OCTET_STREAM, KcA);
     console.log("Password round 2 resp: ", resp2);
     const response2 = JSON.parse(resp2);
-    if (!response2.statusCode || response2.statusCode != 201) {
+    if (response2.statusCode != 201) {
       throw new Error(`Password auth 1 CoAP returned status: ${response2.statusCode}`);
     }
     if (s.validateKey(response2.payload)) {
