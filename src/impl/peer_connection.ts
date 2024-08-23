@@ -100,7 +100,7 @@ export class NabtoWebrtcConnection {
     console.log("Password round 2 resp: ", resp2);
     const response2 = JSON.parse(resp2);
     if (response2.statusCode != 201) {
-      throw new Error(`Password auth 1 CoAP returned status: ${response2.statusCode}`);
+      throw new Error(`Password auth 2 CoAP returned status: ${response2.statusCode}`);
     }
     if (s.validateKey(response2.payload)) {
       return;
